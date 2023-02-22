@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
  */
 public enum RoleName {
 
+  SUPER_ADMIN,
   ADMIN,
   MODERATOR,
   USER;

@@ -1,4 +1,5 @@
 INSERT INTO `role`(`role_name`)
-VALUES ('ADMIN'),
+VALUES ('SUPER_ADMIN'),
+       ('ADMIN'),
        ('MODERATOR'),
        ('USER');

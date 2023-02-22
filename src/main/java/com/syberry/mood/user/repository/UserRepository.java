@@ -42,6 +42,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByIdAndRoleRoleName(Long id, RoleName roleName);
 
   /**
+   * Checks if the user with a given role name exists.
+   *
+   * @param roleName the name of the role of the user to find
+   * @return true if the user with a given role name exists, or false if it does not exist
+   */
+  boolean existsUserByRoleRoleNameIs(RoleName roleName);
+
+  /**
    * Finds all patients in descending order by ID.
    *
    * @return a list of patients sorted in descending order by ID

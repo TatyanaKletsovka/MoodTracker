@@ -1,5 +1,6 @@
 package com.syberry.mood.user.converter;
 
+import com.syberry.mood.employee.dto.EmployeeCreatingDto;
 import com.syberry.mood.user.dto.PatientCreationDto;
 import com.syberry.mood.user.dto.PatientDto;
 import com.syberry.mood.user.dto.RoleName;
@@ -28,6 +29,20 @@ public class UserConverter {
         .username(dto.getSuperheroName())
         .password(dto.getPassword())
         .role(converter.convertToEntity(RoleName.USER))
+        .build();
+  }
+
+  /**
+   * Converts a EmployeeCreationDto object to a User entity.
+   *
+   * @param dto the EmployeeCreationDto object to be converted.
+   * @return the User entity corresponding to the given dto.
+   */
+  public User convertToEntity(EmployeeCreatingDto dto) {
+    return User.builder()
+        .username(dto.getEmail())
+        .password(dto.getPassword())
+        .role(converter.convertToEntity(dto.getRoleName()))
         .build();
   }
 
