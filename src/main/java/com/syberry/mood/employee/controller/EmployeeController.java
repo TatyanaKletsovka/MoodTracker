@@ -10,6 +10,7 @@ import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +41,7 @@ public class EmployeeController {
    * @return the list of EmployeeDto
    */
   @GetMapping
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public List<EmployeeDto> findAllEmployees() {
     log.info("GET-request: getting all employees");
     return employeeService.findAllEmployees();
@@ -52,6 +54,7 @@ public class EmployeeController {
    * @return EmployeeDto
    */
   @GetMapping("/{id}")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public EmployeeDto findEmployeeById(@PathVariable("id") Long id) {
     log.info("GET-request: getting employee with id: {}", id);
     return employeeService.findEmployeeById(id);
@@ -64,6 +67,7 @@ public class EmployeeController {
    * @return EmployeeDto
    */
   @GetMapping("/profile")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
   public EmployeeDto findEmployeeProfile() {
     log.info("GET-request: getting current employee profile");
     return employeeService.findEmployeeProfile();
@@ -76,6 +80,7 @@ public class EmployeeController {
    * @return EmployeeDto
    */
   @PostMapping
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   @ResponseStatus(HttpStatus.CREATED)
   public EmployeeDto createEmployee(@Valid @RequestBody EmployeeCreatingDto dto) {
     log.info("POST-request: creating new employee");
@@ -90,6 +95,7 @@ public class EmployeeController {
    * @return EmployeeDto
    */
   @PutMapping("/{id}")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public EmployeeDto updateEmployee(@PathVariable("id") Long id,
                                     @Valid @RequestBody EmployeeUpdatingDto dto) {
     log.info("PUT-request: updating employee with id: {}", id);
@@ -104,6 +110,7 @@ public class EmployeeController {
    * @return EmployeeDto
    */
   @PutMapping("/{id}/disabled")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public EmployeeDto toggleEmployeeDisabledStateById(@PathVariable("id") Long id) {
     log.info("PUT-request: reverse is employee disabled for employee with id: {}", id);
     return employeeService.toggleEmployeeDisabledStateById(id);
@@ -115,6 +122,7 @@ public class EmployeeController {
    * @param dto an object containing the old and new password
    */
   @PutMapping("/new-password")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void updateEmployeePassword(@Valid @RequestBody PasswordUpdatingDto dto) {
     log.info("PUT-request: updating password for the currently authenticated employee");

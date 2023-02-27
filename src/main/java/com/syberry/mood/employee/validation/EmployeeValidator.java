@@ -1,11 +1,14 @@
 package com.syberry.mood.employee.validation;
 
+import com.syberry.mood.authorization.security.UserDetailsImpl;
+import com.syberry.mood.authorization.util.SecurityUtils;
 import com.syberry.mood.employee.entity.Employee;
 import com.syberry.mood.exception.ValidationException;
 import com.syberry.mood.user.converter.RoleConverter;
 import com.syberry.mood.user.dto.RoleName;
 import com.syberry.mood.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +20,7 @@ public class EmployeeValidator {
 
   private final UserRepository userRepository;
   private final RoleConverter roleConverter;
+  private final PasswordEncoder passwordEncoder;
 
   /**
    * Validates if email already in use and throws a ValidationException if it is.
@@ -75,6 +79,20 @@ public class EmployeeValidator {
   public void validateIsDisabled(Employee employee) {
     if (employee.getUser().isDisabled()) {
       throw new ValidationException("Disabled employee can't be updated");
+    }
+  }
+
+  /**
+   * Validates that stored in DB password equals to received one and
+   * throws ValidationException if it doesn't.
+   *
+   * @param password received password
+   * @throws ValidationException if passwords are not the same
+   */
+  public void validateCurrentPassword(String password) {
+    UserDetailsImpl userDetails = SecurityUtils.getUserDetails();
+    if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+      throw new ValidationException("Wrong password");
     }
   }
 

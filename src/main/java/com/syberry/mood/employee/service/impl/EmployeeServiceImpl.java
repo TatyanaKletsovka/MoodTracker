@@ -1,5 +1,8 @@
 package com.syberry.mood.employee.service.impl;
 
+import static com.syberry.mood.authorization.util.SecurityUtils.getUserDetails;
+
+import com.syberry.mood.authorization.security.UserDetailsImpl;
 import com.syberry.mood.employee.converter.EmployeeConverter;
 import com.syberry.mood.employee.dto.EmployeeCreatingDto;
 import com.syberry.mood.employee.dto.EmployeeDto;
@@ -17,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +37,7 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final UserConverter userConverter;
   private final EmployeeConverter employeeConverter;
   private final EmployeeValidator employeeValidator;
+  private final PasswordEncoder passwordEncoder;
 
   /**
    * Retrieves the list of employees.
@@ -67,8 +72,8 @@ public class EmployeeServiceImpl implements EmployeeService {
    */
   @Override
   public EmployeeDto findEmployeeProfile() {
-    // TODO: add realization after authorization
-    return null;
+    return employeeConverter.convertToDto(
+        employeeRepository.findByUserIdIfExist(getUserDetails().getId()));
   }
 
   /**
@@ -82,8 +87,8 @@ public class EmployeeServiceImpl implements EmployeeService {
   public EmployeeDto createEmployee(EmployeeCreatingDto dto) {
     employeeValidator.validateEmailUniqueness(dto.getEmail());
     employeeValidator.validateRoleForEmployee(dto.getRoleName());
-    // TODO: add password encoder after authorization
     User user = userConverter.convertToEntity(dto);
+    user.setPassword(passwordEncoder.encode(dto.getPassword()));
     userRepository.save(user);
     Employee employee = employeeConverter.convertToEntity(dto);
     employee.setUser(user);
@@ -140,6 +145,10 @@ public class EmployeeServiceImpl implements EmployeeService {
   @Override
   @Transactional
   public void updateEmployeePassword(PasswordUpdatingDto dto) {
-    // TODO: add realization after authorization
+    employeeValidator.validateCurrentPassword(dto.getOldPassword());
+    UserDetailsImpl userDetails = getUserDetails();
+    User user = userRepository.findUserByIdIfExists(userDetails.getId());
+    user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+    user.setUpdatedAt(LocalDateTime.now());
   }
 }

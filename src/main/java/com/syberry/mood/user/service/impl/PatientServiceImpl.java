@@ -1,5 +1,7 @@
 package com.syberry.mood.user.service.impl;
 
+import static com.syberry.mood.authorization.util.SecurityUtils.getUserDetails;
+
 import com.syberry.mood.user.converter.UserConverter;
 import com.syberry.mood.user.dto.PatientCreationDto;
 import com.syberry.mood.user.dto.PatientDto;
@@ -7,9 +9,11 @@ import com.syberry.mood.user.entity.User;
 import com.syberry.mood.user.repository.UserRepository;
 import com.syberry.mood.user.service.PatientService;
 import com.syberry.mood.user.validation.PatientValidator;
+import java.time.LocalDateTime;
 import java.util.List;
 import javax.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,6 +26,7 @@ public class PatientServiceImpl implements PatientService {
   private final UserConverter userConverter;
   private final UserRepository userRepository;
   private final PatientValidator patientValidator;
+  private final PasswordEncoder passwordEncoder;
 
   /**
    * Finds all patients and returns them as a list of DTOs.
@@ -52,8 +57,8 @@ public class PatientServiceImpl implements PatientService {
    */
   @Override
   public PatientDto findPatientProfile() {
-    // TODO: add realization after authorization
-    return null;
+    return userConverter.convertToPatientDto(
+        userRepository.findPatientByIdIfExists(getUserDetails().getId()));
   }
 
   /**
@@ -65,8 +70,8 @@ public class PatientServiceImpl implements PatientService {
   @Override
   public PatientDto createPatient(PatientCreationDto dto) {
     patientValidator.validateSuperheroName(dto.getSuperheroName(), null);
-    // TODO: add password encoder after authorization
     User user = userConverter.convertToEntity(dto);
+    user.setPassword(passwordEncoder.encode(dto.getPassword()));
     return userConverter.convertToPatientDto(userRepository.save(user));
   }
 
@@ -84,6 +89,7 @@ public class PatientServiceImpl implements PatientService {
     User user = userRepository.findPatientByIdIfExists(id);
     patientValidator.validateUpdating(user);
     user.setUsername(superheroName);
+    user.setUpdatedAt(LocalDateTime.now());
     return userConverter.convertToPatientDto(user);
   }
 
@@ -98,6 +104,7 @@ public class PatientServiceImpl implements PatientService {
   public PatientDto disablePatientById(Long id) {
     User user = userRepository.findPatientByIdIfExists(id);
     user.setDisabled(!user.isDisabled());
+    user.setUpdatedAt(LocalDateTime.now());
     return userConverter.convertToPatientDto(user);
   }
 
@@ -112,7 +119,7 @@ public class PatientServiceImpl implements PatientService {
   public void updatePasswordByPatientId(Long id, String password) {
     User user = userRepository.findPatientByIdIfExists(id);
     patientValidator.validateUpdating(user);
-    // TODO: add password encoder after authorization
-    user.setPassword(password);
+    user.setPassword(passwordEncoder.encode(password));
+    user.setUpdatedAt(LocalDateTime.now());
   }
 }

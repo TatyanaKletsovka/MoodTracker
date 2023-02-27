@@ -50,6 +50,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
   boolean existsUserByRoleRoleNameIs(RoleName roleName);
 
   /**
+   * Finds an active user by Username.
+   *
+   * @param username the username of the user to find
+   * @return an Optional containing the user if it exists, or an empty Optional if it does not
+   */
+  Optional<User> findByUsernameAndDisabledFalse(String username);
+
+  /**
    * Finds all patients in descending order by ID.
    *
    * @return a list of patients sorted in descending order by ID
@@ -68,5 +76,30 @@ public interface UserRepository extends JpaRepository<User, Long> {
   default User findPatientByIdIfExists(Long id) {
     return findByIdAndRoleRoleName(id, RoleName.USER).orElseThrow(()
         -> new EntityNotFoundException(String.format("Patient with id: %s is not found", id)));
+  }
+
+  /**
+   * Finds a user by their ID and throws an EntityNotFoundException if they do not exist.
+   *
+   * @param id the ID of the user to find
+   * @return the user with the given ID
+   * @throws EntityNotFoundException if the user does not exist
+   */
+  default User findUserByIdIfExists(Long id) {
+    return findById(id).orElseThrow(()
+        -> new EntityNotFoundException(String.format("User with id: %s is not found", id)));
+  }
+
+  /**
+   * Finds a user by their username and throws an EntityNotFoundException if they do not exist.
+   *
+   * @param username the username of the user to find
+   * @return the user with the given username
+   * @throws EntityNotFoundException if the user does not exist
+   */
+  default User findUserByUsernameAndDisabledFalseIfExists(String username) {
+    return findByUsernameAndDisabledFalse(username).orElseThrow(()
+        -> new EntityNotFoundException(
+            String.format("User with login: %s is not found", username)));
   }
 }

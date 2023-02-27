@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
+import com.syberry.mood.authorization.security.UserDetailsImpl;
 import com.syberry.mood.employee.converter.EmployeeConverter;
 import com.syberry.mood.employee.dto.EmployeeCreatingDto;
 import com.syberry.mood.employee.dto.EmployeeDto;
@@ -32,6 +33,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class EmployeeServiceImplTest {
@@ -51,6 +57,12 @@ class EmployeeServiceImplTest {
   private UserConverter userConverter;
   @Mock
   private RoleConverter roleConverter;
+  @Mock
+  private PasswordEncoder passwordEncoder;
+  @Mock
+  private SecurityContext securityContext;
+  @Mock
+  private Authentication authentication;
 
   private User user = new User();
   private Employee employee = new Employee();
@@ -201,5 +213,17 @@ class EmployeeServiceImplTest {
     doThrow(ValidationException.class).when(employeeValidator).validateItIsNotSuperAdmin(any());
 
     assertThrows(ValidationException.class, () -> employeeService.toggleEmployeeDisabledStateById(ID_FIRST));
+  }
+
+  @Test
+  public void should_SuccessfullyFindEmployeeProfile() {
+    when(securityContext.getAuthentication()).thenReturn(authentication);
+    SecurityContextHolder.setContext(securityContext);
+    when(authentication.getPrincipal())
+        .thenReturn(new UserDetailsImpl(1L, "doc@gmail.com", "AbSdA_21sSA",
+            new SimpleGrantedAuthority(RoleName.ADMIN.name())));
+    when(employeeRepository.findByUserIdIfExist(any())).thenReturn(employee);
+    when(employeeConverter.convertToDto(any())).thenReturn(employeeDto);
+    assertEquals(employeeService.findEmployeeProfile(), employeeDto);
   }
 }
