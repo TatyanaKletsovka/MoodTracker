@@ -1,11 +1,17 @@
 package com.syberry.mood.user.converter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
+
+import com.syberry.mood.employee.dto.EmployeeCreatingDto;
 import com.syberry.mood.user.dto.PatientCreationDto;
 import com.syberry.mood.user.dto.PatientDto;
 import com.syberry.mood.user.dto.RoleName;
 import com.syberry.mood.user.dto.UserDto;
 import com.syberry.mood.user.entity.Role;
 import com.syberry.mood.user.entity.User;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,13 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
-
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -82,5 +81,27 @@ public class UserConverterUnitTest {
   @Test
   public void should_SuccessfullyConvertToPatientDto() {
     assertEquals(userConverter.convertToPatientDto(user), patientDto);
+  }
+
+  @Test
+  public void shouldSuccessfullyConvertEmployeeCreationDtoToEntity() {
+    String username = "test@gmail.com";
+    String password = "TestPass*";
+    String roleName = "ADMIN";
+    EmployeeCreatingDto employeeCreatingDto = new EmployeeCreatingDto();
+    employeeCreatingDto.setEmail(username);
+    employeeCreatingDto.setPassword(password);
+    employeeCreatingDto.setRoleName(roleName);
+    User user = new User();
+    user.setUsername(username);
+    user.setPassword(password);
+    Role role = new Role(2L, RoleName.ADMIN);
+    user.setRole(role);
+    when(roleConverter.convertToEntity(roleName)).thenReturn(role);
+
+    assertThat(userConverter.convertToEntity(employeeCreatingDto))
+        .usingRecursiveComparison()
+        .ignoringFields("id", "createdAt")
+        .isEqualTo(user);
   }
 }
