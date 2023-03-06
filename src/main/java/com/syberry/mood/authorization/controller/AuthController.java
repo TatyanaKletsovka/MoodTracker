@@ -2,6 +2,7 @@ package com.syberry.mood.authorization.controller;
 
 import com.syberry.mood.authorization.dto.LoginDto;
 import com.syberry.mood.authorization.dto.LoginRequestDto;
+import com.syberry.mood.authorization.dto.RestorePasswordDto;
 import com.syberry.mood.authorization.service.AuthService;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -68,6 +70,30 @@ public class AuthController {
   public ResponseEntity<?> refreshToken(HttpServletRequest httpServletRequest) {
     log.info("POST-request: refresh token");
     return createHeader(authService.refreshToken(httpServletRequest));
+  }
+
+  /**
+   * Handles the user's reset password request.
+   *
+   * @param email email for sending a reset password link
+   */
+  @PostMapping("/reset")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void resetPassword(@RequestParam String email) {
+    log.info("POST-request: reset password");
+    authService.resetPassword(email);
+  }
+
+  /**
+   * Handles the user's request to save a new password after resetting a forgotten password.
+   *
+   * @param dto an object containing the needed information to set a new password
+   */
+  @PostMapping("/restore")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void restorePassword(@Valid @RequestBody RestorePasswordDto dto) {
+    log.info("POST-request: restore password");
+    authService.restorePassword(dto);
   }
 
   /**

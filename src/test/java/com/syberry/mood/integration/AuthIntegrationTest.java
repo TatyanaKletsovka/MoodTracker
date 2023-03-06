@@ -5,10 +5,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.google.common.cache.LoadingCache;
 import com.syberry.mood.MoodApplication;
 import com.syberry.mood.user.dto.RoleName;
 import com.syberry.mood.user.entity.Role;
 import com.syberry.mood.user.repository.RoleRepository;
+import com.syberry.mood.user.repository.UserRepository;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -25,6 +27,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -45,6 +48,8 @@ public class AuthIntegrationTest {
   private MockMvc mockMvc;
   @Autowired
   private RoleRepository roleRepository;
+  @Autowired
+  private LoadingCache<String, String> passwordResetTokenCache;
   private String loginRequestDto;
   private Cookie[] cookies;
 
@@ -53,6 +58,12 @@ public class AuthIntegrationTest {
     roleRepository.save(new Role(1L, RoleName.ADMIN));
     roleRepository.save(new Role(2L, RoleName.MODERATOR));
     roleRepository.save(new Role(3L, RoleName.USER));
+
+    final File employeeToCreateFile = new ClassPathResource("json/create-employee.json").getFile();
+    String employeeToCreate = Files.readString(employeeToCreateFile.toPath());
+    mockMvc.perform(post("/employees")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(employeeToCreate));
 
     final File createPatientFile =
         new ClassPathResource("json/create-patient.json").getFile();
@@ -108,5 +119,35 @@ public class AuthIntegrationTest {
             Matchers.containsString(cookieMap.get("accessToken"))))
         .andExpect(cookie().value("refreshToken",
             Matchers.not(Matchers.containsString(cookieMap.get("refreshToken")))));
+  }
+
+  @Test
+  void restorePasswordWhenTokenIsValidThenReturnsNoContent() throws Exception {
+    mockMvc.perform(post("/auth/logout"));
+    String email = "test1@gmail.com";
+    String token = "239d4204-edde-4b14-977a-67c0720e9fcd";
+    passwordResetTokenCache.put(email, token);
+    File jsonFile = new ClassPathResource("json/restore-password.json").getFile();
+    String restorePassword = Files.readString(jsonFile.toPath());
+
+    mockMvc.perform(post("/auth/restore")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(restorePassword))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void restorePasswordWhenTokenDoesNotMatchThenThrowsException() throws Exception {
+    mockMvc.perform(post("/auth/logout"));
+    String email = "test1@gmail.com";
+    String token = "239d4204-edde-4b14-977a-67c0720e9new";
+    passwordResetTokenCache.put(email, token);
+    File jsonFile = new ClassPathResource("json/restore-password.json").getFile();
+    String restorePassword = Files.readString(jsonFile.toPath());
+
+    mockMvc.perform(post("/auth/restore")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(restorePassword))
+        .andExpect(status().is4xxClientError());
   }
 }
