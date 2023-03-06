@@ -10,6 +10,7 @@ import javax.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +41,7 @@ public class PatientController {
    * @return a list of all patients
    */
   @GetMapping
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
   public List<PatientDto> findAllPatients() {
     log.info("GET-request: getting all patients");
     return patientService.findAllPatients();
@@ -52,6 +54,7 @@ public class PatientController {
    * @return the patient with the specified ID
    */
   @GetMapping("/{id}")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
   public PatientDto findPatientById(@PathVariable("id") Long id) {
     log.info("GET-request: getting patient with id: {}", id);
     return patientService.findPatientById(id);
@@ -63,6 +66,7 @@ public class PatientController {
    * @return the profile of the current patient
    */
   @GetMapping("/profile")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER')")
   public PatientDto findPatientProfile() {
     log.info("GET-request: getting current patient profile");
     return patientService.findPatientProfile();
@@ -76,6 +80,7 @@ public class PatientController {
    */
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public PatientDto createPatient(@Valid @RequestBody PatientCreationDto dto) {
     log.info("POST-request: creating new patient");
     return patientService.createPatient(dto);
@@ -89,6 +94,7 @@ public class PatientController {
    * @return the updated patient
    */
   @PutMapping("/{id}")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public PatientDto updatePatientHeroNameById(@PathVariable("id") Long id,
                                        @Pattern(regexp = Constants.SUPERHERO_NAME_REGEX,
                                            message = Constants.SUPERHERO_NAME_MESSAGE)
@@ -104,6 +110,7 @@ public class PatientController {
    * @return the updated patient
    */
   @PutMapping("/{id}/disabled")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public PatientDto disablePatientById(@PathVariable("id") Long id) {
     log.info("PUT-request: reverse is patient disabled for patient with id: {}", id);
     return patientService.disablePatientById(id);
@@ -117,6 +124,7 @@ public class PatientController {
    */
   @PutMapping("/{id}/new-password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public void updatePasswordByPatientId(@PathVariable("id") Long id,
                                  @Pattern(regexp = Constants.PATIENT_PASSWORD_REGEX,
                                      message = Constants.PATIENT_PASSWORD_MESSAGE)
