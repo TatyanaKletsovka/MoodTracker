@@ -1,8 +1,13 @@
 package com.syberry.mood.authorization.security;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.syberry.mood.authorization.service.impl.UserDetailsServiceImpl;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +34,9 @@ public class SecurityConfig {
   private final UserDetailsServiceImpl userDetailsService;
   private final AuthEntryPointJwt authEntryPointJwt;
   private final JwtTokenFilter jwtTokenFilter;
+
+  @Value("${app.cache-expiration}")
+  private long cacheExpiration;
 
   /**
    * Defines authentication provider bean.
@@ -81,6 +89,8 @@ public class SecurityConfig {
         .authorizeHttpRequests()
         .antMatchers("/auth/login").permitAll()
         .antMatchers("/auth/refresh").permitAll()
+        .antMatchers("/auth/reset").permitAll()
+        .antMatchers("/auth/restore").permitAll()
         .anyRequest().authenticated();
 
     http.headers().frameOptions().sameOrigin();
@@ -111,5 +121,22 @@ public class SecurityConfig {
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return new CorsFilter(source);
+  }
+
+  /**
+   * Defines LoadingCache bean.
+   *
+   * @return LoadingCache bean
+   */
+  @Bean
+  public LoadingCache<String, String> passwordResetTokenCache() {
+    return CacheBuilder.newBuilder()
+        .expireAfterWrite(cacheExpiration, TimeUnit.MINUTES)
+        .build(new CacheLoader<>() {
+          @Override
+          public String load(String key) {
+            return "";
+          }
+        });
   }
 }

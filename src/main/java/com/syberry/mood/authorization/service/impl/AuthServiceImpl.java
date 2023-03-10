@@ -1,16 +1,25 @@
 package com.syberry.mood.authorization.service.impl;
 
+import com.google.common.cache.LoadingCache;
 import com.syberry.mood.authorization.dto.LoginDto;
 import com.syberry.mood.authorization.dto.LoginRequestDto;
+import com.syberry.mood.authorization.dto.RestorePasswordDto;
 import com.syberry.mood.authorization.entity.RefreshToken;
 import com.syberry.mood.authorization.security.UserDetailsImpl;
 import com.syberry.mood.authorization.service.AuthService;
+import com.syberry.mood.authorization.service.EmailService;
 import com.syberry.mood.authorization.service.RefreshTokenService;
 import com.syberry.mood.authorization.util.SecurityUtils;
+import com.syberry.mood.exception.EmailException;
 import com.syberry.mood.exception.TokenRefreshException;
+import com.syberry.mood.exception.ValidationException;
 import com.syberry.mood.user.converter.UserConverter;
 import com.syberry.mood.user.dto.UserDto;
+import com.syberry.mood.user.entity.User;
 import com.syberry.mood.user.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import javax.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
@@ -18,7 +27,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 /**
  * Implementation of AuthService interface.
@@ -32,6 +44,9 @@ public class AuthServiceImpl implements AuthService {
   private final UserRepository userRepository;
   private final UserConverter userConverter;
   private final SecurityUtils securityUtils;
+  private final EmailService emailService;
+  private final PasswordEncoder passwordEncoder;
+  private final LoadingCache<String, String> passwordResetTokenCache;
 
   /**
    * Allows the user to log into application.
@@ -80,6 +95,44 @@ public class AuthServiceImpl implements AuthService {
         .cookie(accessCookie.toString())
         .refreshCookie(refreshCookie.toString())
         .build();
+  }
+
+  /**
+   * Sends a reset password link to the user's email.
+   *
+   * @param email email for sending a reset password link
+   */
+  @Override
+  public void resetPassword(String email) {
+    User user = userRepository.findUserByUsernameAndDisabledFalseIfExists(email);
+    String token = UUID.randomUUID().toString();
+    passwordResetTokenCache.put(user.getUsername(), token);
+    emailService.constructResetTokenEmail(token, user.getUsername());
+  }
+
+  /**
+   * Updates the user's password after validating the password reset token.
+   *
+   * @param dto RestorePasswordDto
+   */
+  @Override
+  @Transactional
+  public void restorePassword(RestorePasswordDto dto) {
+    String username = dto.getEmail();
+    String token;
+    try {
+      token = passwordResetTokenCache.get(username);
+    } catch (ExecutionException e) {
+      throw new EmailException(e, "Email verification failed");
+    }
+    if (token.equals(dto.getToken())) {
+      passwordResetTokenCache.refresh(username);
+      User user = userRepository.findUserByUsernameAndDisabledFalseIfExists(username);
+      user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+      user.setUpdatedAt(LocalDateTime.now());
+      return;
+    }
+    throw new ValidationException("Password reset token is invalid");
   }
 
   /**

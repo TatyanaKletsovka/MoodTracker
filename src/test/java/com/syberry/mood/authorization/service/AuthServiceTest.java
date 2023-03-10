@@ -3,16 +3,23 @@ package com.syberry.mood.authorization.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.common.cache.LoadingCache;
 import com.syberry.mood.authorization.dto.LoginDto;
 import com.syberry.mood.authorization.dto.LoginRequestDto;
+import com.syberry.mood.authorization.dto.RestorePasswordDto;
 import com.syberry.mood.authorization.entity.RefreshToken;
 import com.syberry.mood.authorization.security.UserDetailsImpl;
 import com.syberry.mood.authorization.service.impl.AuthServiceImpl;
 import com.syberry.mood.authorization.util.SecurityUtils;
+import com.syberry.mood.exception.EmailException;
 import com.syberry.mood.exception.EntityNotFoundException;
 import com.syberry.mood.exception.TokenRefreshException;
+import com.syberry.mood.exception.ValidationException;
 import com.syberry.mood.user.converter.UserConverter;
 import com.syberry.mood.user.dto.RoleName;
 import com.syberry.mood.user.dto.UserDto;
@@ -21,6 +28,7 @@ import com.syberry.mood.user.entity.User;
 import com.syberry.mood.user.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +42,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -48,6 +57,12 @@ public class AuthServiceTest {
   @Mock
   private RefreshTokenService refreshTokenService;
   @Mock
+  private EmailService emailService;
+  @Mock
+  private LoadingCache<String, String> passwordResetTokenCache;
+  @Mock
+  private PasswordEncoder passwordEncoder;
+  @Mock
   private SecurityUtils securityUtils;
   @Mock
   private Authentication authentication;
@@ -55,6 +70,8 @@ public class AuthServiceTest {
   private UserConverter userConverter;
   @Mock
   private SecurityContext securityContext;
+  private RestorePasswordDto restorePasswordDto = new RestorePasswordDto(
+      "doc@gmail.com", "9b61291e-975e-41dd-992d-3dc0ab3a41b8", "Pass1234");
 
   @Test
   public void should_SuccessfullyLogin() {
@@ -151,5 +168,58 @@ public class AuthServiceTest {
     when(securityUtils.getCleanJwtCookie()).thenReturn(accessCookie);
     when(securityUtils.getCleanJwtRefreshCookie()).thenReturn(refreshCookie);
     assertThat(authService.logout()).isEqualTo(loginDto);
+  }
+
+  @Test
+  void resetPasswordWhenUserExistsThenSendsEmail() {
+    String email = "doc@gmail.com";
+    User user = new User();
+    user.setUsername(email);
+    when(userRepository.findUserByUsernameAndDisabledFalseIfExists(email)).thenReturn(user);
+    doNothing().when(emailService).constructResetTokenEmail(any(), any());
+    doNothing().when(passwordResetTokenCache).put(eq(email), any());
+
+    authService.resetPassword(email);
+
+    verify(emailService).constructResetTokenEmail(any(), eq(email));
+  }
+
+  @Test
+  void resetPasswordWhenUserIsNotFoundThenThrowsException() {
+    when(userRepository.findUserByUsernameAndDisabledFalseIfExists(any()))
+        .thenThrow(EntityNotFoundException.class);
+
+    assertThrows(EntityNotFoundException.class, () -> authService.resetPassword(any()));
+  }
+
+  @Test
+  void restorePasswordWhenTokenForEmailIsNotFoundInCacheThenThrowsException()
+      throws ExecutionException {
+    when(passwordResetTokenCache.get(any())).thenThrow(ExecutionException.class);
+
+    assertThrows(EmailException.class, () -> authService.restorePassword(restorePasswordDto));
+  }
+
+  @Test
+  void restorePasswordWhenTokenIsInvalidThenThrowsException() throws ExecutionException {
+    when(passwordResetTokenCache.get(any())).thenReturn("");
+
+    assertThrows(ValidationException.class, () -> authService.restorePassword(restorePasswordDto));
+  }
+
+  @Test
+  void restorePasswordWhenTokenIsCorrectThenUpdatesPassword() throws ExecutionException {
+    String email = restorePasswordDto.getEmail();
+    String newPassword = restorePasswordDto.getNewPassword();
+    User user = new User();
+    user.setUsername(email);
+    user.setPassword(newPassword + "old");
+    when(passwordResetTokenCache.get(any())).thenReturn(restorePasswordDto.getToken());
+    when(userRepository.findUserByUsernameAndDisabledFalseIfExists(email)).thenReturn(user);
+    when(passwordEncoder.encode(any())).thenReturn(newPassword);
+
+    authService.restorePassword(restorePasswordDto);
+
+    assertThat(user.getPassword()).isEqualTo(newPassword);
   }
 }
