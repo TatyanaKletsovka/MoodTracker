@@ -160,7 +160,6 @@ public class SecurityUtils {
             ACCESS_COOKIE_NAME) ? ACCESS_COOKIE_DURATION_SEC : REFRESH_COOKIE_DURATION_SEC)
         .httpOnly(true)
         .secure(false)
-        .sameSite("strict")
         .build();
   }
 

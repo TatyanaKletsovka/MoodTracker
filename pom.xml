@@ -21,6 +21,7 @@
         <checkstyle.version>3.2.1</checkstyle.version>
         <pmd.version>3.20.0</pmd.version>
         <jwt.version>0.9.1</jwt.version>
+        <jackson.version>2.14.0</jackson.version>
         <guava.version>31.0.1-jre</guava.version>
     </properties>
     <dependencies>
@@ -93,6 +94,11 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

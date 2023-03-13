@@ -66,7 +66,7 @@ public class PatientController {
    * @return the profile of the current patient
    */
   @GetMapping("/profile")
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER')")
+  @PreAuthorize("hasAnyRole('USER')")
   public PatientDto findPatientProfile() {
     log.info("GET-request: getting current patient profile");
     return patientService.findPatientProfile();
