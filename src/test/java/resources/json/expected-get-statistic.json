@@ -1,0 +1,16 @@
+{
+  "patientId": 2,
+  "lastEmotion": null,
+  "mostOftenEmotions": [],
+  "totalEmotionRecords": 0,
+  "missedRecords": 1,
+  "frequencyOfEmotions": {
+    "GROUCHY": 0,
+    "ANXIOUS": 0,
+    "EXCITED": 0,
+    "ANGRY": 0,
+    "SAD": 0,
+    "HAPPY": 0,
+    "RELAXED": 0
+  }
+}

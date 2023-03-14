@@ -36,6 +36,9 @@ spring:
           auth: true
           starttls:
             enable: true
+  main:
+    datetime-format:
+      time-zone: Europe/Moscow
 # context path config
 server:
   servlet:

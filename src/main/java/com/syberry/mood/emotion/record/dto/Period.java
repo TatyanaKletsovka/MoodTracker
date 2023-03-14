@@ -11,27 +11,30 @@ import lombok.Getter;
 @Getter
 public enum Period {
 
-  MORNING(LocalTime.of(0, 0), LocalTime.of(12, 0)),
-  AFTERNOON(LocalTime.of(12, 0), LocalTime.of(17, 0)),
-  EVENING(LocalTime.of(17, 0), LocalTime.of(0, 0));
+  MORNING(LocalTime.of(0, 0), LocalTime.of(12, 0), 3),
+  AFTERNOON(LocalTime.of(12, 0), LocalTime.of(17, 0), 2),
+  EVENING(LocalTime.of(17, 0), LocalTime.of(0, 0), 1);
 
   private final LocalTime periodStartTime;
   private final LocalTime periodEndTime;
+  private final int periodsAfter;
 
-  Period(LocalTime periodStartTime, LocalTime periodEndTime) {
+  Period(LocalTime periodStartTime, LocalTime periodEndTime, int periodsAfter) {
     this.periodStartTime = periodStartTime;
     this.periodEndTime = periodEndTime;
+    this.periodsAfter = periodsAfter;
   }
 
   /**
-   * Determines the current period of the day based on the current time.
+   * Determines the period of the day based on a given time.
    *
+   * @param localTime the time to use for determining the period
    * @return the current period of the day (morning, afternoon, evening)
    */
-  public static Period findOutCurrentPeriod() {
-    if (isInPeriod(Period.MORNING)) {
+  public static Period findOutPeriodByTime(LocalTime localTime) {
+    if (isInPeriod(Period.MORNING, localTime)) {
       return Period.MORNING;
-    } else if (isInPeriod(Period.AFTERNOON)) {
+    } else if (isInPeriod(Period.AFTERNOON, localTime)) {
       return Period.AFTERNOON;
     } else {
       return Period.EVENING;
@@ -39,15 +42,15 @@ public enum Period {
   }
 
   /**
-   * Determines whether the current time is within the specified period of the day.
+   * Determines whether the time is within the specified period of the day.
    *
    * @param period the period of the day to check
-   * @return true if the current time is within the specified period, false otherwise
+   * @param time the time to check
+   * @return true if the time is within the specified period, false otherwise
    */
-  private static boolean isInPeriod(Period period) {
-    LocalTime currentTime = LocalTime.now();
-    return currentTime.compareTo(period.periodStartTime) >= 0
-        && currentTime.isBefore(period.periodEndTime);
+  private static boolean isInPeriod(Period period, LocalTime time) {
+    return time.compareTo(period.periodStartTime) >= 0
+        && time.isBefore(period.periodEndTime);
   }
 
   /**
@@ -58,5 +61,41 @@ public enum Period {
   public static String getNames() {
     return Arrays.stream(Period.class.getEnumConstants()).map(Enum::name)
         .collect(Collectors.joining(", "));
+  }
+
+  /**
+   * Returns the number of periods after the current period inclusive.
+   *
+   * @return the number of periods after the current period inclusive
+   */
+  public int getPeriodsAfter() {
+    return periodsAfter;
+  }
+
+  /**
+   * Counts the number of periods before the current period inclusive.
+   *
+   * @return the number of periods before the current period inclusive
+   */
+  public int countPeriodsBefore() {
+    return Arrays.stream(Period.values())
+        .filter(p -> p != this)
+        .mapToInt(Period::getPeriodsAfter)
+        .max()
+        .orElse(0);
+  }
+
+  /**
+   * Counts the number of periods between the current period and the specified period inclusive.
+   *
+   * @param period the specified period
+   * @return the number of periods between the current period and the specified period inclusive
+   */
+  public int countDayPeriodsBetween(Period period) {
+    if (this == period) {
+      return 1;
+    } else {
+      return Math.abs(this.getPeriodsAfter() - period.getPeriodsAfter()) + 1;
+    }
   }
 }

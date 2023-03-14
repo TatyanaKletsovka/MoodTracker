@@ -23,6 +23,7 @@
         <jwt.version>0.9.1</jwt.version>
         <jackson.version>2.14.0</jackson.version>
         <guava.version>31.0.1-jre</guava.version>
+        <jsonassert.version>1.5.0</jsonassert.version>
     </properties>
     <dependencies>
         <dependency>
@@ -112,6 +113,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.skyscreamer</groupId>
+            <artifactId>jsonassert</artifactId>
+            <version>${jsonassert.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

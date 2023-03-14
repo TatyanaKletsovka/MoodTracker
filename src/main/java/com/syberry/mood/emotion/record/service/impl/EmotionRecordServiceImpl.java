@@ -4,22 +4,30 @@ import static com.syberry.mood.authorization.util.SecurityUtils.getUserDetails;
 
 import com.syberry.mood.emotion.record.converter.EmotionRecordConverter;
 import com.syberry.mood.emotion.record.converter.PeriodConverter;
+import com.syberry.mood.emotion.record.dto.Emotion;
 import com.syberry.mood.emotion.record.dto.EmotionRecordByPatientDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordCreationDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
+import com.syberry.mood.emotion.record.dto.EmotionsStatisticDto;
 import com.syberry.mood.emotion.record.dto.Period;
 import com.syberry.mood.emotion.record.entity.EmotionRecord;
 import com.syberry.mood.emotion.record.repository.EmotionRecordRepository;
 import com.syberry.mood.emotion.record.service.CsvService;
 import com.syberry.mood.emotion.record.service.EmotionRecordService;
-import com.syberry.mood.emotion.record.service.specification.EmotionRecordSpecification;
+import com.syberry.mood.emotion.record.service.StatisticService;
+import com.syberry.mood.emotion.record.specification.EmotionRecordSpecification;
+import com.syberry.mood.emotion.record.util.DateUtil;
 import com.syberry.mood.emotion.record.validation.EmotionRecordValidator;
 import com.syberry.mood.user.entity.User;
 import com.syberry.mood.user.repository.UserRepository;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +50,70 @@ public class EmotionRecordServiceImpl implements EmotionRecordService {
   private final UserRepository userRepository;
   private final EmotionRecordValidator validator;
   private final PeriodConverter periodConverter;
-  private final EmotionRecordSpecification emotionRecordSpecification;
+  private final EmotionRecordSpecification specification;
+  private final StatisticService statisticService;
+
+  /**
+   * Finds all emotion records filtered by the given filter.
+   *
+   * @param filter the filter to apply to the search
+   * @return a map of emotion records grouped by date, patient, period
+   */
+  public Map<String, Map<String, Map<String, EmotionRecordDto>>> findAllEmotionRecordsGroupByDate(
+      EmotionRecordFilter filter) {
+    List<User> patients = userRepository.findAllPatientsSortIdDesc();
+    List<EmotionRecord> emotionRecords = recordRepository
+        .findAll(specification.buildGetAllByDatesSpecification(filter));
+    List<EmotionRecordDto> recordDtos = emotionRecords.stream()
+        .map(recordConverter::convertToDto).toList();
+    return recordConverter.convertToMap(recordDtos, filter, patients);
+  }
+
+  /**
+   * Finds emotion records for a specified patient, filtered by the given filter.
+   *
+   * @param id the ID of the patient to search for
+   * @param filter the filter to apply to the search
+   * @return a map of emotion records for the specified patient grouped by date, patient, period
+   */
+  public Map<String, Map<String, Map<String, EmotionRecordDto>>> findEmotionRecordsByPatient(
+      Long id, EmotionRecordFilter filter) {
+    User patient = userRepository.findPatientByIdIfExists(id);
+    List<EmotionRecord> emotionRecords = recordRepository
+        .findAll(specification.buildGetAllByPatientIdSpecification(id, filter));
+    List<EmotionRecordDto> recordDtos = emotionRecords.stream()
+        .map(recordConverter::convertToDto).toList();
+    return recordConverter.convertToMap(
+        recordDtos, filter, new ArrayList<>(Collections.singletonList(patient)));
+  }
+
+  /**
+   * Retrieves emotion statistics for a specified patient based on the given filter.
+   *
+   * @param id the ID of the patient to retrieve statistics for
+   * @param filter the filter to apply to the statistics search
+   * @return an EmotionsStatisticDto object containing the retrieved statistics
+   */
+  public EmotionsStatisticDto getStatistic(Long id, EmotionRecordFilter filter) {
+    User patient = userRepository.findPatientByIdIfExists(id);
+    LocalDateTime startDateTime = filter.getStartDate().atStartOfDay();
+    LocalDateTime endDateTime = DateUtil.convertToDateTimeEndDay(filter.getEndDate());
+    Emotion lastEmotion = statisticService.findLastEmotion(id, startDateTime, endDateTime);
+    List<Emotion> mostFrequentEmotions = statisticService.findMostFrequentEmotions(patient.getId(),
+        startDateTime, endDateTime);
+    int totalRecords = statisticService.countTotalRecords(id, startDateTime, endDateTime);
+    int missedRecords = statisticService.countMissedRecords(patient, startDateTime, endDateTime);
+    Map<Emotion, Long> frequencyOfEmotions = statisticService.getFrequencyOfEmotions(
+        patient.getId(), startDateTime, endDateTime);
+    return EmotionsStatisticDto.builder()
+        .patientId(id)
+        .lastEmotion(lastEmotion)
+        .mostOftenEmotions(mostFrequentEmotions)
+        .totalEmotionRecords(totalRecords)
+        .missedRecords(missedRecords)
+        .frequencyOfEmotions(frequencyOfEmotions)
+        .build();
+  }
 
   /**
    * Finds an Emotion Record with the given ID.
@@ -83,9 +154,10 @@ public class EmotionRecordServiceImpl implements EmotionRecordService {
    */
   @Override
   public EmotionRecordDto createEmotionRecord(EmotionRecordCreationDto dto) {
-    validator.validateIsNoOtherRecordSameTime(dto.getPatientId(),
-        periodConverter.convertToEnum(dto.getPeriod()), dto.getDate());
+    Period period = periodConverter.convertToEnum(dto.getPeriod());
+    validator.validateIsNoOtherRecordSameTime(dto.getPatientId(), period, dto.getDate());
     User patient = userRepository.findPatientByIdIfExists(dto.getPatientId());
+    validator.validateDateNotAfterDisable(patient, dto.getDate(), period);
     EmotionRecord emotionRecord = recordConverter.convertToEntity(dto);
     emotionRecord.setPatient(patient);
     return recordConverter.convertToDto(recordRepository.save(emotionRecord));
@@ -101,7 +173,7 @@ public class EmotionRecordServiceImpl implements EmotionRecordService {
   public EmotionRecordDto createEmotionRecordByPatient(EmotionRecordByPatientDto dto) {
     Long patientId = getUserDetails().getId();
     User patient = userRepository.findPatientByIdIfExists(patientId);
-    Period period = Period.findOutCurrentPeriod();
+    Period period = Period.findOutPeriodByTime(LocalTime.now());
     validator.validateIsNoOtherRecordSameTime(patientId, period, LocalDate.now());
     EmotionRecord emotionRecord = recordConverter.convertToEntity(dto, period);
     emotionRecord.setPatient(patient);
@@ -159,11 +231,11 @@ public class EmotionRecordServiceImpl implements EmotionRecordService {
    */
   @Override
   public ByteArrayOutputStream getCsvFile(Long patientId, EmotionRecordFilter filter) {
-    Specification<EmotionRecord> specification = patientId != null
-        ? emotionRecordSpecification.buildGetAllByPatientIdSpecification(patientId, filter)
-        : emotionRecordSpecification.buildGetAllByDatesSpecification(filter);
+    Specification<EmotionRecord> recordSpecification = patientId != null
+        ? specification.buildGetAllByPatientIdSpecification(patientId, filter)
+        : specification.buildGetAllByDatesSpecification(filter);
 
-    List<EmotionRecord> emotionRecords = recordRepository.findAll(specification);
+    List<EmotionRecord> emotionRecords = recordRepository.findAll(recordSpecification);
     List<EmotionRecordDto> emotionRecordsDto = emotionRecords.stream()
         .map(recordConverter::convertToDto).toList();
     return csvService.createCsv(emotionRecordsDto, EmotionRecordDto.class);

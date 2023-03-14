@@ -5,6 +5,7 @@ import com.syberry.mood.emotion.record.dto.EmotionRecordCreationDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
+import com.syberry.mood.emotion.record.dto.EmotionsStatisticDto;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
@@ -12,6 +13,34 @@ import java.util.Map;
  * Service interface for managing emotion records.
  */
 public interface EmotionRecordService {
+
+  /**
+   * Finds all emotion records filtered by the given filter.
+   *
+   * @param filter the filter to apply to the search
+   * @return a map of emotion records grouped by date, patient, period
+   */
+  Map<String, Map<String, Map<String, EmotionRecordDto>>> findAllEmotionRecordsGroupByDate(
+      EmotionRecordFilter filter);
+
+  /**
+   * Finds emotion records for a specified patient, filtered by the given filter.
+   *
+   * @param id the ID of the patient to search for
+   * @param filter the filter to apply to the search
+   * @return a map of emotion records for the specified patient grouped by date, patient, period
+   */
+  Map<String, Map<String, Map<String, EmotionRecordDto>>> findEmotionRecordsByPatient(
+      Long id, EmotionRecordFilter filter);
+
+  /**
+   * Retrieves emotion statistics for a specified patient based on the given filter.
+   *
+   * @param id the ID of the patient to retrieve statistics for
+   * @param filter the filter to apply to the statistics search
+   * @return an EmotionsStatisticDto object containing the retrieved statistics
+   */
+  EmotionsStatisticDto getStatistic(Long id, EmotionRecordFilter filter);
 
   /**
    * Finds an Emotion Record with the given ID.

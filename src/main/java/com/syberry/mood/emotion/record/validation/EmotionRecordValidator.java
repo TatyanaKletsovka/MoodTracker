@@ -4,7 +4,9 @@ import com.syberry.mood.emotion.record.dto.Period;
 import com.syberry.mood.emotion.record.entity.EmotionRecord;
 import com.syberry.mood.emotion.record.repository.EmotionRecordRepository;
 import com.syberry.mood.exception.ValidationException;
+import com.syberry.mood.user.entity.User;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,24 @@ public class EmotionRecordValidator {
     if (emotionRecord.getUpdatedAt() != null) {
       throw new ValidationException("Current emotion record is already updated. "
           + "It can't be updated more than one time");
+    }
+  }
+
+  /**
+   * Validates that the given date and period does not fall
+   * after the disabled date of the patient.
+   *
+   * @param patient The user for which the date and period are being validated
+   * @param date The date for which the validation is being done
+   * @param period The period for which the validation is being done
+   * @throws ValidationException if the patient is disabled
+   *     and the given date and period fall after the patient's disabled date.
+   */
+  public void validateDateNotAfterDisable(User patient, LocalDate date, Period period) {
+    LocalDateTime dateTime = date.atTime(period.getPeriodStartTime());
+    if (patient.isDisabled() && dateTime.isAfter(patient.getUpdatedAt())) {
+      throw new ValidationException(
+          "Emotion record can't be created after patient's disable date");
     }
   }
 }

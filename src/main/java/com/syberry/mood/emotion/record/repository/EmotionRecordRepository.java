@@ -5,9 +5,12 @@ import com.syberry.mood.emotion.record.entity.EmotionRecord;
 import com.syberry.mood.exception.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Repository interface for managing emotion record entities.
@@ -19,15 +22,55 @@ public interface EmotionRecordRepository extends JpaRepository<EmotionRecord, Lo
    * Finds an EmotionRecord entity with the specified patient id,
    * created at timestamp between start and end, and period.
    *
-   * @param id             The id of the patient
+   * @param id The id of the patient
    * @param createdAtStart The start timestamp of the created at time
-   * @param createdAtEnd   The end timestamp of the created at time
-   * @param period         The period of EmotionRecord
+   * @param createdAtEnd The end timestamp of the created at time
+   * @param period The period of EmotionRecord
    * @return The EmotionRecord entity wrapped in an Optional if found,
    *     or an empty Optional if not found
    */
   Optional<EmotionRecord> findByPatientIdAndCreatedAtBetweenAndPeriod(
       Long id, LocalDateTime createdAtStart, LocalDateTime createdAtEnd, Period period);
+
+  /**
+   * Finds the most recent emotion record for a given patient within a specified time range.
+   *
+   * @param id the ID of the patient to search for
+   * @param createdAtStart the start of the time range to search for emotion records
+   * @param createdAtEnd the end of the time range to search for emotion records
+   * @return an Optional containing the most recent emotion record for the given patient
+   *     within the specified time range, or an empty Optional if no such record is found
+   */
+  Optional<EmotionRecord> findFirstByPatientIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+      Long id, LocalDateTime createdAtStart, LocalDateTime createdAtEnd);
+
+  /**
+   * Counts the number of emotion records for a given user
+   * within a specified time range, grouped by emotion type.
+   *
+   * @param userId the ID of the user to search for
+   * @param startDate the start of the time range to search for emotion records
+   * @param endDate the end of the time range to search for emotion records
+   * @return a list of Object arrays, where each array contains an emotion type
+   *     and the count of records for that type
+   */
+  @Query("SELECT er.emotion, COUNT(er) FROM EmotionRecord er "
+      + "WHERE er.patient.id = :userId "
+      + "AND er.createdAt >= :startDate "
+      + "AND er.createdAt <= :endDate "
+      + "GROUP BY er.emotion")
+  List<Object[]> countRecordsByEmotion(Long userId, LocalDateTime startDate, LocalDateTime endDate);
+
+
+  /**
+   * Counts the number of emotion records for a given patient within a specified time range.
+   *
+   * @param id the ID of the patient to search for
+   * @param startDate the start of the time range to search for emotion records
+   * @param endDate the end of the time range to search for emotion records
+   * @return the number of emotion records for the given patient within the specified time range
+   */
+  int countByPatientIdAndCreatedAtBetween(Long id, LocalDateTime startDate, LocalDateTime endDate);
 
   /**
    * Finds an EmotionRecord entity with the specified id,
@@ -69,7 +112,7 @@ public interface EmotionRecordRepository extends JpaRepository<EmotionRecord, Lo
    */
   default EmotionRecord findByPatientIdAndCurrentDate(Long id) {
     return findByPatientIdAndPeriodAndDate(
-        id, Period.findOutCurrentPeriod(), LocalDate.now()).orElseThrow(
+        id, Period.findOutPeriodByTime(LocalTime.now()), LocalDate.now()).orElseThrow(
             () -> new EntityNotFoundException(String.format(
         "EmotionRecord for patient with id: %s and current date is not found", id)));
   }
