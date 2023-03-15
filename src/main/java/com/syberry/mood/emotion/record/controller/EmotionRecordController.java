@@ -3,13 +3,18 @@ package com.syberry.mood.emotion.record.controller;
 import com.syberry.mood.emotion.record.dto.EmotionRecordByPatientDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordCreationDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordDto;
+import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
 import com.syberry.mood.emotion.record.service.EmotionRecordService;
+import java.io.ByteArrayOutputStream;
 import java.util.Map;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -33,6 +38,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/emotion-records")
 public class EmotionRecordController {
+
+  private static final String ATTACHMENT = "attachment;filename=emotion-records.csv";
 
   private final EmotionRecordService emotionRecordService;
 
@@ -134,5 +141,25 @@ public class EmotionRecordController {
   @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
   public void deleteEmotionRecordById(@PathVariable("id") Long id) {
     emotionRecordService.deleteEmotionRecordById(id);
+  }
+
+  /**
+   * Generates csv file with emotion records.
+   *
+   * @param filter filter with startDate and endDate parameters
+   * @param patientId the ID of the patient
+   * @return response entity with byte array
+   */
+  @GetMapping(value = {"/csv-file", "/csv-file/patients/{id}", "/csv-file/patients"})
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
+  public ResponseEntity<?> getCsvFile(EmotionRecordFilter filter,
+      @PathVariable(value = "id", required = false) Long patientId) {
+    log.info("GET-request: creating csv file");
+    MediaType mediaType = MediaType.parseMediaType("text/csv");
+    ByteArrayOutputStream csvFile = emotionRecordService.getCsvFile(patientId, filter);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, ATTACHMENT)
+        .contentType(mediaType)
+        .body(csvFile.toByteArray());
   }
 }

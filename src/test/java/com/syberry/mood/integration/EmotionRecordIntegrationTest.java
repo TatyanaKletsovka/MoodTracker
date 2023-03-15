@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,6 +33,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(classes = MoodApplication.class)
@@ -47,6 +49,14 @@ public class EmotionRecordIntegrationTest {
   private RoleRepository roleRepository;
   @Autowired
   private UserRepository userRepository;
+
+  private static final String PARAM_DATE = "2023-01-01";
+  private static final String PARAM_START_DATE = "startDate";
+  private static final String PARAM_END_DATE = "endDate";
+  private static final String CSV_CONTENT = "\"id\",\"emotion\",\"intensity\",\"period\","
+      + "\"createdAt\",\"updatedAt\",\"note\",\"patientId\",\"superheroName\""
+      + "\n\"1\",\"SAD\",\"5\",\"EVENING\",\"2023-01-01T17:00\","
+      + "\"-\",\"Note\",\"2\",\"Magical Fairy\"\n";
 
   @BeforeEach
   public void setUp() {
@@ -216,6 +226,26 @@ public class EmotionRecordIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "ADMIN")
+  public void should_CreateCsvFileByPatientId() throws Exception {
+    createEmotionRecord();
+    perform("/emotion-records/csv-file/patients/2")
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.parseMediaType("text/csv")))
+        .andExpect(content().bytes(CSV_CONTENT.getBytes()));
+  }
+
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "ADMIN")
+  public void should_CreateCsvFileByDate() throws Exception {
+    createEmotionRecord();
+    perform("/emotion-records/csv-file")
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.parseMediaType("text/csv")))
+        .andExpect(content().bytes(CSV_CONTENT.getBytes()));
+  }
+
   private void login() throws Exception {
     final File loginRequestDtoFile =
         new ClassPathResource("json/login-request-dto2.json").getFile();
@@ -224,5 +254,20 @@ public class EmotionRecordIntegrationTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content(loginRequestDto))
         .andDo(print());
+  }
+
+  private void createEmotionRecord() throws Exception {
+    final File jsonFile = new ClassPathResource("json/create-emotion-record.json").getFile();
+    String emotionRecord = Files.readString(jsonFile.toPath());
+    mockMvc.perform(post("/emotion-records/patients/2")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(emotionRecord))
+        .andDo(print());
+  }
+
+  private ResultActions perform(String url) throws Exception {
+    return mockMvc.perform(get(url)
+        .param(PARAM_START_DATE, PARAM_DATE)
+        .param(PARAM_END_DATE, PARAM_DATE));
   }
 }

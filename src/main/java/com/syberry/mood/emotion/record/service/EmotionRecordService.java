@@ -3,7 +3,9 @@ package com.syberry.mood.emotion.record.service;
 import com.syberry.mood.emotion.record.dto.EmotionRecordByPatientDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordCreationDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordDto;
+import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
+import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
 /**
@@ -65,4 +67,13 @@ public interface EmotionRecordService {
    * @param id the ID of the emotion record to be deleted
    */
   void deleteEmotionRecordById(Long id);
+
+  /**
+   * Generates csv file with patient's emotion records.
+   *
+   * @param patientId the ID of patient
+   * @param filter filter with startDate and endDate parameters
+   * @return byteArrayOutputStream with created csv file
+   */
+  ByteArrayOutputStream getCsvFile(Long patientId, EmotionRecordFilter filter);
 }

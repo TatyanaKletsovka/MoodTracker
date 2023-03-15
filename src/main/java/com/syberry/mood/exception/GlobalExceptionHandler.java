@@ -32,7 +32,8 @@ public class GlobalExceptionHandler extends Exception {
       TokenRefreshException.class,
       ValidationException.class,
       ConstraintViolationException.class,
-      EmailException.class
+      EmailException.class,
+      CsvFileException.class
   })
   public final ResponseEntity<Map<String, List<String>>> customExceptionHandler(Exception ex) {
     List<String> errors = Collections.singletonList(ex.getMessage());
