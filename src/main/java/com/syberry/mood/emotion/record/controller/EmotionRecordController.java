@@ -7,11 +7,14 @@ import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
 import com.syberry.mood.emotion.record.dto.EmotionsStatisticDto;
 import com.syberry.mood.emotion.record.service.EmotionRecordService;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDate;
 import java.util.Map;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -206,5 +209,47 @@ public class EmotionRecordController {
         .header(HttpHeaders.CONTENT_DISPOSITION, ATTACHMENT)
         .contentType(mediaType)
         .body(csvFile.toByteArray());
+  }
+
+  /**
+   * Generates pdf file with emotion records.
+   *
+   * @param filter filter with startDate and endDate parameters
+   * @return response entity with attachment
+   */
+  @GetMapping(value = "/pdf-file")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
+  public ResponseEntity<InputStreamResource> getEmotionRecordsDataInPdf(
+      EmotionRecordFilter filter) {
+    log.info("GET-request: creating pdf file with emotion records");
+    String contentDispositionValue = "attachment; filename=emotion_records_"
+        + LocalDate.now() + ".pdf";
+    ByteArrayInputStream bis = emotionRecordService.getEmotionRecordsDataInPdf(filter);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, contentDispositionValue)
+        .contentType(MediaType.APPLICATION_PDF)
+        .body(new InputStreamResource(bis));
+  }
+
+  /**
+   * Generates pdf file with patient emotion records.
+   *
+   * @param filter    filter with startDate and endDate parameters
+   * @param patientId the ID of the patient
+   * @return response entity with attachment
+   */
+  @GetMapping(value = "/pdf-file/patients/{id}")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
+  public ResponseEntity<InputStreamResource> getPatientEmotionRecordsDataInPdf(
+      EmotionRecordFilter filter, @PathVariable(value = "id") Long patientId) {
+    log.info("GET-request: creating pdf file with patient emotion records");
+    String contentDispositionValue = "attachment; filename=patient_emotion_records_"
+        + LocalDate.now() + ".pdf";
+    ByteArrayInputStream bis = emotionRecordService
+        .getPatientEmotionRecordsDataInPdf(filter, patientId);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, contentDispositionValue)
+        .contentType(MediaType.APPLICATION_PDF)
+        .body(new InputStreamResource(bis));
   }
 }
