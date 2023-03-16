@@ -5,6 +5,7 @@ import com.syberry.mood.emotion.record.dto.EmotionRecordCreationDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
+import com.syberry.mood.emotion.record.dto.EmotionsStatisticDto;
 import com.syberry.mood.emotion.record.service.EmotionRecordService;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
@@ -42,6 +43,50 @@ public class EmotionRecordController {
   private static final String ATTACHMENT = "attachment;filename=emotion-records.csv";
 
   private final EmotionRecordService emotionRecordService;
+
+  /**
+   * Retrieves all emotion records grouped by date, filtered by the given dates from filter.
+   *
+   * @param filter the filter to use for retrieving the emotion records
+   * @return a map containing the emotion records grouped by date
+   */
+  @GetMapping
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
+  public Map<String, Map<String, Map<String, EmotionRecordDto>>> findAllEmotionRecords(
+      EmotionRecordFilter filter) {
+    log.info("GET-request: getting all emotion records with id");
+    return emotionRecordService.findAllEmotionRecordsGroupByDate(filter);
+  }
+
+  /**
+   * Retrieves all emotion records for a specific patient, filtered by the given dates from filter.
+   *
+   * @param id the ID of the patient for whom to retrieve emotion records
+   * @param filter the filter to use for retrieving the emotion records
+   * @return a map containing the emotion records grouped by date
+   */
+  @GetMapping("/patients/{id}")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
+  public Map<String, Map<String, Map<String, EmotionRecordDto>>> findEmotionRecordsByPatient(
+      @PathVariable("id") Long id, EmotionRecordFilter filter) {
+    log.info("GET-request: getting all emotion records for patient with id: {}", id);
+    return emotionRecordService.findEmotionRecordsByPatient(id, filter);
+  }
+
+  /**
+   * Retrieves emotion statistics for a specific patient, filtered by the given dates from filter.
+   *
+   * @param id the ID of the patient for whom to retrieve emotion statistics
+   * @param filter the filter to use for retrieving the emotion statistics
+   * @return a DTO containing various statistics about the patient's emotions
+   */
+  @GetMapping("/patients/{id}/statistic")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR')")
+  public EmotionsStatisticDto getStatistic(
+      @PathVariable("id") Long id, EmotionRecordFilter filter) {
+    log.info("GET-request: getting statistic for patient with id: {}", id);
+    return emotionRecordService.getStatistic(id, filter);
+  }
 
   /**
    * Returns the emotion-record with the specified ID.

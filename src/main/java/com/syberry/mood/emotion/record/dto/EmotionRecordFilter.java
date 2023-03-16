@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * A data transfer object that represents filter parameters.
+ * A filter for filtering emotion records by date range.
  */
 @Data
 @NoArgsConstructor

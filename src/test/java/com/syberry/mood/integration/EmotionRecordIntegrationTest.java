@@ -19,9 +19,11 @@ import com.syberry.mood.user.repository.UserRepository;
 import java.io.File;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,6 +35,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 @ExtendWith(SpringExtension.class)
@@ -71,6 +74,58 @@ public class EmotionRecordIntegrationTest {
     userRepository.save(new User(2L, "Magical Fairy",
         "$2a$10$06JtH78fSVtkurq0agdiO.R.H5MnpZkoxks.tIlvxmTwYjZHIjYv6", userRole,
         LocalDateTime.now(), null, false));
+    userRepository.save(new User(3L, "Magical Frog",
+        "$2a$10$06JtH78fSVtkurq0agdiO.R.H5MnpZkoxks.tIlvxmTwYjZHIjYv6", userRole,
+        LocalDateTime.now(), null, false));
+  }
+
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "SUPER_ADMIN")
+  public void should_GetAllEmotionRecords() throws Exception {
+    final File jsonFile = new ClassPathResource("json/expected-get-all.json").getFile();
+    String expected = Files.readString(jsonFile.toPath());
+    MvcResult response = mockMvc.perform(
+        get("/emotion-records")
+        .param("startDate", "2023-03-14")
+        .param("endDate", "2023-03-14")
+        .contentType(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andReturn();
+    String responseJson = response.getResponse().getContentAsString();
+    JSONAssert.assertEquals(expected, responseJson, false);
+  }
+
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "SUPER_ADMIN")
+  public void should_GetAllEmotionRecordsByPatientId() throws Exception {
+    final File jsonFile = new ClassPathResource("json/expected-get-all-by-patient.json").getFile();
+    String expected = Files.readString(jsonFile.toPath());
+    MvcResult response = mockMvc.perform(
+        get("/emotion-records/patients/2")
+        .param("startDate", "2023-03-14")
+        .param("endDate", "2023-03-14")
+        .contentType(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andReturn();
+    String responseJson = response.getResponse().getContentAsString();
+    JSONAssert.assertEquals(expected, responseJson, false);
+  }
+
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "SUPER_ADMIN")
+  public void should_GetAllStatisticByPatientId() throws Exception {
+    final File jsonFile = new ClassPathResource("json/expected-get-statistic.json").getFile();
+    String expected = Files.readString(jsonFile.toPath());
+    MvcResult response = mockMvc.perform(
+        get("/emotion-records/patients/2/statistic")
+        .contentType(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andReturn();
+    String responseJson = response.getResponse().getContentAsString();
+    JSONAssert.assertEquals(expected, responseJson, false);
   }
 
   @Test
@@ -146,7 +201,8 @@ public class EmotionRecordIntegrationTest {
         .andExpect(jsonPath("$.id").value(1L))
         .andExpect(jsonPath("$.emotion").value("SAD"))
         .andExpect(jsonPath("$.intensity").value(5))
-        .andExpect(jsonPath("$.period").value(Period.findOutCurrentPeriod().toString()))
+        .andExpect(jsonPath("$.period")
+            .value(Period.findOutPeriodByTime(LocalTime.now()).toString()))
         .andExpect(jsonPath("$.note").doesNotExist())
         .andExpect(jsonPath("$.patientId").value(2L))
         .andExpect(jsonPath("$.superheroName").value("Magical Fairy"));
@@ -202,7 +258,8 @@ public class EmotionRecordIntegrationTest {
         .andExpect(jsonPath("$.id").value(1L))
         .andExpect(jsonPath("$.emotion").value("HAPPY"))
         .andExpect(jsonPath("$.intensity").value(3))
-        .andExpect(jsonPath("$.period").value(Period.findOutCurrentPeriod().toString()))
+        .andExpect(jsonPath("$.period")
+            .value(Period.findOutPeriodByTime(LocalTime.now()).toString()))
         .andExpect(jsonPath("$.note").doesNotExist())
         .andExpect(jsonPath("$.patientId").value(2L))
         .andExpect(jsonPath("$.superheroName").value("Magical Fairy"));
