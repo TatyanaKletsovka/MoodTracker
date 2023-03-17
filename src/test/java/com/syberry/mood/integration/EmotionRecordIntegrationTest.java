@@ -1,5 +1,6 @@
 package com.syberry.mood.integration;
 
+import static org.junit.Assert.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -301,6 +302,32 @@ public class EmotionRecordIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.parseMediaType("text/csv")))
         .andExpect(content().bytes(CSV_CONTENT.getBytes()));
+  }
+
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "ADMIN")
+  public void should_GetPatientEmotionRecordsDataInPdf() throws Exception {
+    createEmotionRecord();
+
+    MvcResult result = mockMvc.perform(get("/emotion-records/pdf-file/patients/2"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andReturn();
+
+    assertNotNull(result.getResponse().getOutputStream());
+  }
+
+  @Test
+  @WithMockUser(username = "doc@gmail.com", roles = "ADMIN")
+  public void should_GetEmotionRecordsDataInPdf() throws Exception {
+    createEmotionRecord();
+
+    MvcResult result = mockMvc.perform(get("/emotion-records/pdf-file"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andReturn();
+
+    assertNotNull(result.getResponse().getOutputStream());
   }
 
   private void login() throws Exception {

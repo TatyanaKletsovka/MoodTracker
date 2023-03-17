@@ -6,6 +6,7 @@ import com.syberry.mood.emotion.record.dto.EmotionRecordDto;
 import com.syberry.mood.emotion.record.dto.EmotionRecordFilter;
 import com.syberry.mood.emotion.record.dto.EmotionRecordUpdatingDto;
 import com.syberry.mood.emotion.record.dto.EmotionsStatisticDto;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
@@ -105,4 +106,22 @@ public interface EmotionRecordService {
    * @return byteArrayOutputStream with created csv file
    */
   ByteArrayOutputStream getCsvFile(Long patientId, EmotionRecordFilter filter);
+
+  /**
+   * Generates pdf file with emotion records.
+   *
+   * @param filter filter with startDate and endDate parameters
+   * @return ByteArrayInputStream with a created file
+   */
+  ByteArrayInputStream getEmotionRecordsDataInPdf(EmotionRecordFilter filter);
+
+  /**
+   * Generates pdf file with patient emotion records.
+   *
+   * @param filter filter with startDate and endDate parameters
+   * @param patientId the ID of patient
+   * @return ByteArrayInputStream with a created file
+   */
+  ByteArrayInputStream getPatientEmotionRecordsDataInPdf(
+      EmotionRecordFilter filter, Long patientId);
 }

@@ -16,12 +16,14 @@ import com.syberry.mood.emotion.record.entity.EmotionRecord;
 import com.syberry.mood.emotion.record.repository.EmotionRecordRepository;
 import com.syberry.mood.emotion.record.service.CsvService;
 import com.syberry.mood.emotion.record.service.EmotionRecordService;
+import com.syberry.mood.emotion.record.service.PdfService;
 import com.syberry.mood.emotion.record.service.StatisticService;
 import com.syberry.mood.emotion.record.specification.EmotionRecordSpecification;
 import com.syberry.mood.emotion.record.util.DateUtil;
 import com.syberry.mood.emotion.record.validation.EmotionRecordValidator;
 import com.syberry.mood.user.entity.User;
 import com.syberry.mood.user.repository.UserRepository;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -50,6 +52,7 @@ public class EmotionRecordServiceImpl implements EmotionRecordService {
   private final UserRepository userRepository;
   private final EmotionRecordValidator validator;
   private final PeriodConverter periodConverter;
+  private final PdfService pdfService;
   private final EmotionRecordSpecification specification;
   private final StatisticService statisticService;
 
@@ -239,5 +242,21 @@ public class EmotionRecordServiceImpl implements EmotionRecordService {
     List<EmotionRecordDto> emotionRecordsDto = emotionRecords.stream()
         .map(recordConverter::convertToDto).toList();
     return csvService.createCsv(emotionRecordsDto, EmotionRecordDto.class);
+  }
+
+  @Override
+  public ByteArrayInputStream getEmotionRecordsDataInPdf(EmotionRecordFilter filter) {
+    Map<String, Map<String, Map<String, EmotionRecordDto>>> records =
+        findAllEmotionRecordsGroupByDate(filter);
+    return pdfService.createPdfWithEmotionRecords(filter, records);
+  }
+
+  @Override
+  public ByteArrayInputStream getPatientEmotionRecordsDataInPdf(
+      EmotionRecordFilter filter, Long patientId) {
+    Map<String, Map<String, Map<String, EmotionRecordDto>>> records =
+        findEmotionRecordsByPatient(patientId, filter);
+    EmotionsStatisticDto statisticsDto = getStatistic(patientId, filter);
+    return pdfService.createPdfWithPatientEmotionRecords(filter, records, statisticsDto);
   }
 }

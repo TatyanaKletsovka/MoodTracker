@@ -8,6 +8,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.syberry.mood.authorization.security.UserDetailsImpl;
@@ -24,6 +26,7 @@ import com.syberry.mood.emotion.record.dto.Period;
 import com.syberry.mood.emotion.record.entity.EmotionRecord;
 import com.syberry.mood.emotion.record.repository.EmotionRecordRepository;
 import com.syberry.mood.emotion.record.service.impl.EmotionRecordServiceImpl;
+import com.syberry.mood.emotion.record.service.impl.PdfServiceImpl;
 import com.syberry.mood.emotion.record.specification.EmotionRecordSpecification;
 import com.syberry.mood.emotion.record.validation.EmotionRecordValidator;
 import com.syberry.mood.exception.CsvFileException;
@@ -80,6 +83,8 @@ public class EmotionRecordServiceTest {
   private EmotionRecordSpecification specification;
   @Mock
   private StatisticService statisticService;
+  @Mock
+  private PdfServiceImpl pdfService;
   @Mock
   private CsvService csvService;
 
@@ -371,5 +376,50 @@ public class EmotionRecordServiceTest {
         .thenReturn(byteArrayOutputStream);
     assertEquals(recordService.getCsvFile(patientId, emotionRecordFilterDto),
         byteArrayOutputStream);
+  }
+
+  @Test
+  void should_SuccessfullyGetEmotionRecordsDataInPdf() {
+    when(userRepository.findAllPatientsSortIdDesc())
+        .thenReturn(new ArrayList<>(Collections.singletonList(patient)));
+    when(recordRepository.findAll(
+        specification.buildGetAllByDatesSpecification(any(EmotionRecordFilter.class))))
+        .thenReturn(new ArrayList<>());
+    when(recordConverter.convertToMap(anyList(), any(EmotionRecordFilter.class), anyList()))
+        .thenReturn(map);
+
+    recordService.getEmotionRecordsDataInPdf(filter);
+
+    verify(pdfService, times(1)).createPdfWithEmotionRecords(filter, map);
+  }
+
+  @Test
+  void should_SuccessfullyGetPatientEmotionRecordsDataInPdf() {
+    when(userRepository.findPatientByIdIfExists(anyLong()))
+        .thenReturn(patient);
+    when(recordRepository.findAll(
+        specification.buildGetAllByPatientIdSpecification(anyLong(),
+            any(EmotionRecordFilter.class)))).thenReturn(new ArrayList<>());
+    when(recordConverter.convertToMap(anyList(), any(EmotionRecordFilter.class), anyList()))
+        .thenReturn(map);
+    when(statisticService.findLastEmotion(anyLong(),
+        any(LocalDateTime.class), any(LocalDateTime.class)))
+        .thenReturn(emotion);
+    when(statisticService.findMostFrequentEmotions(anyLong(),
+        any(LocalDateTime.class), any(LocalDateTime.class)))
+        .thenReturn(new ArrayList<>(Collections.singletonList(emotion)));
+    when(statisticService.countTotalRecords(anyLong(),
+        any(LocalDateTime.class), any(LocalDateTime.class)))
+        .thenReturn(3);
+    when(statisticService.countMissedRecords(any(User.class),
+        any(LocalDateTime.class), any(LocalDateTime.class)))
+        .thenReturn(0);
+    when(statisticService.getFrequencyOfEmotions(anyLong(),
+        any(LocalDateTime.class), any(LocalDateTime.class)))
+        .thenReturn(new HashMap<>());
+
+    recordService.getPatientEmotionRecordsDataInPdf(filter, id);
+
+    verify(pdfService, times(1)).createPdfWithPatientEmotionRecords(filter, map, statistic);
   }
 }
